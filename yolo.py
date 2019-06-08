@@ -1,7 +1,7 @@
 import numpy as np
 import argparse
 import cv2 as cv
-import urllib
+from urllib.request import urlopen
 import socket
 
 
@@ -34,21 +34,26 @@ class boxInfo:
         # la distancia se traduce en unidades de 2.35 cuartas
         self.distancia = -np.math.log((self.escalaCuadrado / sizes[classID]) ** 2.35, 10)
         print("Distancia: " + str(self.distancia))
+
+def send(character):
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect((HOST, PORT))
+            s.sendall(character.encode() + b"\r\n")
+            s.close()
+    except Exception as e:
+        print(e.args)
 try:
-    HOST = input("ip del telefono")  # The server's hostname or IP address
-    PORT = int(input("puerto del telefono"))        # The port used by the server
+    HOST = input("ip del telefono: ")  # The server's hostname or IP address
+    PORT = int(input("puerto del telefono: "))        # The port used by the server
+    print(HOST + ":" + str(PORT))
 except:
     print ("no valid socket provided")
 
-def send(character):
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect((HOST, PORT))
-        s.sendall(character.encode() + b"\r\n")
-
-def desicion(listaBoxes # type: List[boxInfo]
-             ):
+def desicion(listaBoxes):
     for info in listaBoxes:
         print (info.classID)
+        send('b')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -83,7 +88,7 @@ if __name__ == '__main__':
 
     parser.add_argument('-c', '--confidence',
                         type=float,
-                        default=0.5,
+                        default=0.25,
                         help='The model will reject boundaries which has a \
 				probabiity less than the confidence value. \
 				default: 0.5')
@@ -121,15 +126,16 @@ if __name__ == '__main__':
     layer_names = [layer_names[i[0] - 1] for i in net.getUnconnectedOutLayers()]
 
     # Infer real-time on webcam
-    url = 'http://172.24.74.176:8080///shot.jpg?rnd=846518'
+    url = 'http://' + input("ip:puerto de la cámara: ")+'///shot.jpg?rnd=846518'
     count = 0
 
     while True:
         try:
-            imgResp = urllib.urlopen(url)
+            imgResp = urlopen(url)
             imgNp = np.array(bytearray(imgResp.read()), dtype=np.uint8)
             img = cv.imdecode(imgNp, -1)
-        except:
+        except Exception as e:
+            print(e.args)
             continue
 
         # _, frame = vid.read()
