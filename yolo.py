@@ -1,4 +1,5 @@
 import time
+from random import Random
 
 import numpy as np
 import argparse
@@ -8,14 +9,11 @@ import socket
 
 import ctypes
 
-
-
-
-
 from yolo_utils import infer_image, show_image
 
 FLAGS = []
 sizes = [0.75, 0, 1.75, 1]
+
 
 class boxInfo:
     def __init__(self, classID, x, y, a, b):
@@ -27,13 +25,13 @@ class boxInfo:
 
         self.a = a
         self.b = b
-        #print("---Clase " + str(classids[box]) + " detectada---")
+        # print("---Clase " + str(classids[box]) + " detectada---")
         # cx y cx establecen el punto central de la caja
 
         self.cx = x + (a / 2)
         self.cy = y + (b / 2)
-        #print ("Esquinas de la caja: [" + str(x) + "," + str(y) + "] ; [" + str(x + a) + "," + str(y + b) + "]")
-        #print("Puntos central es: " + str(self.cx) + "," + str(self.cy))
+        # print ("Esquinas de la caja: [" + str(x) + "," + str(y) + "] ; [" + str(x + a) + "," + str(y + b) + "]")
+        # print("Puntos central es: " + str(self.cx) + "," + str(self.cy))
 
         # tennisball= 0, robot = 2, marca = 3
         # classids determina que clase fue
@@ -41,42 +39,64 @@ class boxInfo:
         # El promedio de porcentaje de pantalla que cubre el target repartido en x y y
 
         self.escalaCuadrado = (float(a) / width + float(b) / height) / 2
-        #print ("Escala en pantalla: " + str(self.escalaCuadrado))
-        #la distancia se traduce en unidades de 2.35 cuartas
+        # print ("Escala en pantalla: " + str(self.escalaCuadrado))
+        # la distancia se traduce en unidades de 2.35 cuartas
         self.distancia = -np.math.log((self.escalaCuadrado / sizes[classID]) ** 2.35, 10)
-        #print("Distancia: " + str(self.distancia))
+        # print("Distancia: " + str(self.distancia))
 
 
+ipMic = '172.24.85.195'
+conexion = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+conexion.connect((ipMic, 9000))
 
 
+# conexion.connect(('172.24.87.55', 65432))
 
 def send(character):
+    global conexion
     try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.connect(('192.168.43.59', 9000))
-            s.sendall(character.encode() + b"\r\n")
-            s.close()
+        conexion.sendall(character.encode() + b"\r\n")
     except Exception as e:
         print(e.args)
+        try:
+            conexion.close()
+            conexion = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            conexion.connect((ipMic, 9000))
+            conexion.sendall(character.encode() + b"\r\n")
+        except Exception as e:
+            print(e.args)
+
+
 try:
     HOST = input("ip del telefono: ")  # The server's hostname or IP address
-    PORT = int(input("puerto del telefono: "))        # The port used by the server
+    PORT = int(input("puerto del telefono: "))  # The port used by the server
     print(HOST + ":" + str(PORT))
 except:
-    print ("no valid socket provided")
+    print("no valid socket provided")
 
 
 def desicion(listaBoxes, ancho, alto):
-
     tennisball = " "
     robot = " "
     marca = " "
     mitad = ancho / 2
 
-    if(len(listaBoxes)==0):
+    if (len(listaBoxes) == 0):
         print("No encontró nada")
-        print("Izquierda")
-        send('l')
+        # send('m')
+        d = (Random()).random()
+        if(d<=0.35):
+            print("Izquierda")
+            send('l')
+        elif(d<0.5):
+            print("Abajo")
+            send('d')
+        elif(d<0.75):
+            print("Derecha")
+            send('r')
+        else:
+            print("Arriba")
+            send('u')
     # -----------------------------------------------------------------
     else:
         for info in listaBoxes:
@@ -97,37 +117,35 @@ def desicion(listaBoxes, ancho, alto):
             if robot == " ":
                 print("Bola, sin robot")
 
-
-
                 if tennisball.distancia > 0.8:
                     print("Debe acercase más")
-                    #send('m')
+                    # send('m')
                     Direccion(tennisball, mitad, ancho)
                     # -----------------------------------------------------------------
-                    if marca != " ":
+                    if marca != " " and tennisball.distancia < 0.8:
                         if marca.distancia > 0.8:
-                            Direccion(tennisball, mitad, ancho)
+                            Direccion(marca, mitad, ancho)
                     else:
                         print("Bola, sin robot, con marca, buscar la marca")
                 else:
                     Direccion(tennisball, mitad, ancho)
                     print("Debe moverse al frente")
-                  #  send('u')
+                #  send('u')
 
 
             # -----------------------------------------------------------------
             elif robot != " ":
 
-                if robot.distancia < 1.0 and tennisball.distancia < 0.3:
-                    Direccion(robot, mitad, ancho)
-                    print("Debe alejarse o rodearlo, lleva la bola")
+                if robot.distancia < 0.5 and tennisball.distancia < 0.3:
+                    # Direccion(robot, mitad, ancho)
+                    print("Debe alejarse o buscar la marca")
 
                 if marca != " ":
                     Direccion(marca, mitad, ancho)
                     print("Bola, con marca, con robot")
 
                 else:
-                    #Direccion(marca, mitad, ancho)
+                    # Direccion(marca, mitad, ancho)
                     print("Bola, con robot")
 
         # -----------------------------------------------------------------
@@ -135,35 +153,36 @@ def desicion(listaBoxes, ancho, alto):
             if robot != " ":
                 print("Sin bola, con robot")
 
-                if robot.distancia < 1.0:
+                if robot.distancia < 0.5:
                     print("hacer para atrás")
-                    #Direccion(marca, mitad, ancho)
+
+                    # Direccion(marca, mitad, ancho)
 
     print("-------------------------------------------------------------------")
 
-timer = 0
-def Direccion (objeto, mitad, ancho):
+
+def Direccion(objeto, mitad, ancho):
     if objeto.cx < (mitad - (ancho * 0.1)):
-        send('f')
-        time.sleep(timer)
+        # send('m')
+        # time.sleep(0.5)
         print("izquierda")
         send('l')
-        time.sleep(timer)
+        # time.sleep(0.5)
 
 
     elif objeto.cx > (mitad + (ancho * 0.1)):
-        send('f')
-        time.sleep(timer)
+        # send('m')
+        # time.sleep(3)
         print("derecha")
         send('r')
-        time.sleep(timer)
+        # time.sleep(3)
 
     else:
-        send('m')
-        time.sleep(timer)
+        # send('m')
+        # time.sleep(3)
         print("Centro")
         send('u')
-        time.sleep(timer)
+        # time.sleep(3)
 
 
 if __name__ == '__main__':
@@ -237,7 +256,7 @@ if __name__ == '__main__':
     layer_names = [layer_names[i[0] - 1] for i in net.getUnconnectedOutLayers()]
 
     # Infer real-time on webcam
-    url = 'http://' + input("ip:puerto de la cámara: ")+'///shot.jpg?rnd=846518'
+    url = 'http://' + input("ip:puerto de la cámara: ") + '///shot.jpg?rnd=846518'
     count = 0
 
     while True:
@@ -252,7 +271,8 @@ if __name__ == '__main__':
         # _, frame = vid.read()
         height, width = img.shape[:2]
         if count == 0:
-            img, boxes, confidences, classids, idxs = infer_image(net, layer_names, height, width, img, colors, labels, FLAGS)
+            img, boxes, confidences, classids, idxs = infer_image(net, layer_names, \
+                                                                  height, width, img, colors, labels, FLAGS)
             count += 1
         else:
             img, boxes, confidences, classids, idxs = infer_image(net, layer_names, height, width, img, colors, labels,
@@ -261,10 +281,9 @@ if __name__ == '__main__':
             count = (count + 1) % 6
         boxInfos = []
         for box in range(0, len(boxes)):
-            boxInfos.append(boxInfo(classids[box], boxes[box][0],boxes[box][1],boxes[box][2],boxes[box][3]))
+            boxInfos.append(boxInfo(classids[box], boxes[box][0], boxes[box][1], boxes[box][2], boxes[box][3]))
 
             # print(str(classids[box]) + ": " + str(a) + " + " + str(b) + " = " + str(squareSize))
-        print("deicidir")
         desicion(boxInfos, width, height)
         cv.imshow('Object Detection with OpenCV', img)
 
