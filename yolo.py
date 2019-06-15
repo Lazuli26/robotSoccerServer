@@ -45,14 +45,13 @@ class boxInfo:
         # print("Distancia: " + str(self.distancia))
 
 
-ipMic = '172.24.85.195'
 conexion = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-conexion.connect((ipMic, 9000))
 
 
 # conexion.connect(('172.24.87.55', 65432))
 
 def send(character):
+    return
     global conexion
     try:
         conexion.sendall(character.encode() + b"\r\n")
@@ -61,20 +60,32 @@ def send(character):
         try:
             conexion.close()
             conexion = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            conexion.connect((ipMic, 9000))
+            conexion.connect((HOST, 9000))
             conexion.sendall(character.encode() + b"\r\n")
         except Exception as e:
             print(e.args)
 
-
 try:
-    HOST = input("ip del telefono: ")  # The server's hostname or IP address
-    PORT = int(input("puerto del telefono: "))  # The port used by the server
-    print(HOST + ":" + str(PORT))
+    HOST = input("ip del telefono (172.24.89.39):")  # The server's hostname or IP address
+    if HOST.strip() == "":
+        HOST = '172.24.89.39'
 except:
     print("no valid socket provided")
 
-
+def busqueda():
+    d = (Random()).random()
+    if(d<=0.4):
+        print("Izquierda")
+        send('l')
+    elif(d<0.8):
+        print("Abajo")
+        send('d')
+    elif(d<0.9):
+        print("Derecha")
+        send('r')
+    else:
+        print("Arriba")
+        send('u')
 def desicion(listaBoxes, ancho, alto):
     tennisball = " "
     robot = " "
@@ -84,19 +95,7 @@ def desicion(listaBoxes, ancho, alto):
     if (len(listaBoxes) == 0):
         print("No encontró nada")
         # send('m')
-        d = (Random()).random()
-        if(d<=0.35):
-            print("Izquierda")
-            send('l')
-        elif(d<0.5):
-            print("Abajo")
-            send('d')
-        elif(d<0.75):
-            print("Derecha")
-            send('r')
-        else:
-            print("Arriba")
-            send('u')
+        busqueda()
     # -----------------------------------------------------------------
     else:
         for info in listaBoxes:
@@ -126,7 +125,9 @@ def desicion(listaBoxes, ancho, alto):
                         if marca.distancia > 0.8:
                             Direccion(marca, mitad, ancho)
                     else:
+                        d = (Random()).random()
                         print("Bola, sin robot, con marca, buscar la marca")
+                        busqueda()
                 else:
                     Direccion(tennisball, mitad, ancho)
                     print("Debe moverse al frente")
@@ -138,6 +139,7 @@ def desicion(listaBoxes, ancho, alto):
 
                 if robot.distancia < 0.5 and tennisball.distancia < 0.3:
                     # Direccion(robot, mitad, ancho)
+                    busqueda()
                     print("Debe alejarse o buscar la marca")
 
                 if marca != " ":
@@ -146,6 +148,7 @@ def desicion(listaBoxes, ancho, alto):
 
                 else:
                     # Direccion(marca, mitad, ancho)
+                    busqueda()
                     print("Bola, con robot")
 
         # -----------------------------------------------------------------
@@ -154,15 +157,19 @@ def desicion(listaBoxes, ancho, alto):
                 print("Sin bola, con robot")
 
                 if robot.distancia < 0.5:
+                    send('b')
                     print("hacer para atrás")
-
-                    # Direccion(marca, mitad, ancho)
+                else:
+                    busqueda()
+            else:
+                busqueda()
+                # Direccion(marca, mitad, ancho)
 
     print("-------------------------------------------------------------------")
 
 
 def Direccion(objeto, mitad, ancho):
-    if objeto.cx < (mitad - (ancho * 0.1)):
+    if objeto.cx < (mitad - (ancho * 0.15)):
         # send('m')
         # time.sleep(0.5)
         print("izquierda")
@@ -225,7 +232,7 @@ if __name__ == '__main__':
 
     parser.add_argument('-th', '--threshold',
                         type=float,
-                        default=0.3,
+                        default=0.1,
                         help='The threshold to use when applying the \
 				Non-Max Suppresion')
 
@@ -256,7 +263,10 @@ if __name__ == '__main__':
     layer_names = [layer_names[i[0] - 1] for i in net.getUnconnectedOutLayers()]
 
     # Infer real-time on webcam
-    url = 'http://' + input("ip:puerto de la cámara: ") + '///shot.jpg?rnd=846518'
+    cam = input("ip:puerto de la cámara(172.24.87.108): ")
+    if cam.strip() == "":
+        cam = "172.24.87.108:8080"
+    url = 'http://' + cam + '///shot.jpg?rnd=846518'
     count = 0
 
     while True:
